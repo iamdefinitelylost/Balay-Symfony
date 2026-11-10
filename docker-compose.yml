@@ -1,0 +1,66 @@
+services:
+  php:
+    build: .
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    environment:
+      APP_ENV: dev
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: balay
+      DB_USER: balay
+      DB_PASSWORD: balay
+    depends_on:
+      db:
+        condition: service_healthy
+    # First start installs the Composer packages into ./vendor, then runs PHP-FPM.
+    command: >
+      sh -c "mkdir -p var public/uploads &&
+             ( [ -f vendor/autoload_runtime.php ] || composer install --no-interaction --prefer-dist ) &&
+             chown -R www-data:www-data var public/uploads &&
+             exec php-fpm"
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+
+  db:
+    image: mysql:8.0
+    command: --default-time-zone=+08:00 --character-set-server=utf8mb4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: balay
+      MYSQL_USER: balay
+      MYSQL_PASSWORD: balay
+    ports:
+      - "3307:3306"   # 3307 so it does not clash with XAMPP's MySQL on 3306
+    volumes:
+      - db_data:/var/lib/mysql
+      # Runs once, only when the db_data volume is empty.
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: root
+    depends_on:
+      - db
+
+volumes:
+  db_data:

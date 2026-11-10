@@ -1,0 +1,30 @@
+{% extends 'panel/base.html.twig' %}
+
+{% block title %}Bookings – Balay admin{% endblock %}
+
+{% block content %}
+<div class="bar"><h1>Bookings</h1></div>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Ref</th><th>Stay</th><th>Guest</th><th>Dates</th><th>Guests</th><th>Total</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for b in bookings %}
+    <tr>
+      <td>BAL-{{ '%05d'|format(b.id) }}</td>
+      <td>{{ b.title }}</td>
+      <td>{{ b.guest_name }}<br><span class="meta">{{ b.guest_email }}</span></td>
+      <td>{{ b.check_in }} to {{ b.check_out }}</td>
+      <td>{{ b.guests }}</td>
+      <td>₱{{ b.total|number_format }}</td>
+      <td><span class="pill {{ b.status }}">{{ b.status }}</span></td>
+      <td>{% if b.status == 'confirmed' %}
+        <form class="inline" method="post" action="{{ path('app_admin_booking_cancel', {id: b.id}) }}" onsubmit="return confirm('Cancel this booking?')">
+          <input type="hidden" name="_token" value="{{ csrf_token('booking_action') }}">
+          <button class="sm" type="submit">Cancel</button>
+        </form>{% endif %}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="8" class="meta">No bookings yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

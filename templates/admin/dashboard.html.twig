@@ -1,0 +1,22 @@
+{% extends 'panel/base.html.twig' %}
+
+{% block title %}Admin dashboard – Balay{% endblock %}
+
+{% block content %}
+<h1 style="margin:16px 0 0">Admin dashboard</h1>
+<div class="stats">
+  <div class="stat"><b>{{ stats.users }}</b><span>Total users</span></div>
+  <div class="stat"><b>{{ stats.staff }}</b><span>Total staff</span></div>
+  <div class="stat"><b>{{ stats.records }}</b><span>Total records (stays)</span></div>
+  <div class="stat"><b>{{ stats.admins }}</b><span>Admins</span></div>
+  <div class="stat"><b>{{ stats.customers }}</b><span>Customers</span></div>
+  <div class="stat"><b>{{ stats.disabled }}</b><span>Disabled accounts</span></div>
+  <div class="stat"><b>{{ stats.bookings }}</b><span>Confirmed bookings</span></div>
+  <div class="stat"><b>₱{{ stats.revenue|number_format }}</b><span>Booked revenue</span></div>
+</div>
+<div class="rowbtn">
+  <a class="btn" href="{{ path('app_admin_users') }}">Manage users</a>
+  <a class="btn ghost" href="{{ path('app_records') }}">All records</a>
+  <a class="btn ghost" href="{{ path('app_admin_bookings') }}">Bookings</a>
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends 'panel/base.html.twig' %}
+
+{% block title %}Records – Balay{% endblock %}
+
+{% block content %}
+<div class="bar">
+  <h1>{{ is_granted('ROLE_ADMIN') ? 'All records' : 'Records' }}</h1>
+  <a class="btn sm" href="{{ path('app_record_new') }}">+ New record</a>
+</div>
+<p class="meta">{{ is_granted('ROLE_ADMIN') ? 'As an admin you can edit or delete any record.' : 'You can see every record, but only edit or delete the ones you created.' }}</p>
+
+<form class="toolbar" method="get" action="{{ path('app_records') }}">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search title, city or host" aria-label="Search">
+  <select name="type" aria-label="Type">
+    <option value="">All types</option>
+    {% for t in types %}<option{{ type == t ? ' selected' }}>{{ t }}</option>{% endfor %}
+  </select>
+  <select name="owner" aria-label="Owner">
+    <option value="">Everyone's records</option>
+    <option value="mine"{{ owner == 'mine' ? ' selected' }}>Only mine</option>
+  </select>
+  <button class="btn sm" type="submit">Filter</button>
+</form>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Title</th><th>City</th><th>Type</th><th>Price</th><th>Guests</th><th>Host</th><th>Created by</th><th>Actions</th></tr></thead>
+  <tbody>
+  {% for r in records %}
+    <tr>
+      <td>{{ r.title }}</td>
+      <td>{{ r.city }}</td>
+      <td>{{ r.type }}</td>
+      <td>₱{{ r.price|number_format }}</td>
+      <td>{{ r.max_guests }}</td>
+      <td>{{ r.host }}</td>
+      <td>{{ r.owner_name ?? '—' }}{% if r.created_by is not null and r.created_by == app.user.id %} <span class="meta">(you)</span>{% endif %}</td>
+      <td>
+        {% if is_granted('RECORD_MANAGE', r) %}
+          <div class="rowbtn">
+            <a class="sm btn ghost" href="{{ path('app_record_edit', {id: r.id}) }}">Edit</a>
+            <a class="sm btn danger" href="{{ path('app_record_delete', {id: r.id}) }}">Delete</a>
+          </div>
+        {% else %}
+          <span class="meta">View only</span>
+        {% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="8" class="meta">No records match.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

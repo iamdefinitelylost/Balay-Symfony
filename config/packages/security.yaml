@@ -1,0 +1,47 @@
+security:
+    password_hashers:
+        App\Security\AppUser: 'auto'
+
+    providers:
+        app_users:
+            id: App\Security\UserProvider
+
+    # An admin automatically has every staff permission.
+    role_hierarchy:
+        ROLE_ADMIN: ROLE_STAFF
+
+    firewalls:
+        main:
+            lazy: true
+            provider: app_users
+            user_checker: App\Security\UserChecker
+            entry_point: App\Security\LoginEntryPoint
+
+            # Login page for admin / staff (HTML form)
+            form_login:
+                login_path: app_login
+                check_path: app_login
+                enable_csrf: true
+                default_target_path: app_post_login
+                always_use_default_target_path: true
+
+            # Login dialog on the public site (JSON)
+            json_login:
+                check_path: /api/auth/login
+                username_path: email
+                password_path: password
+                success_handler: App\Security\ApiAuthHandler
+                failure_handler: App\Security\ApiAuthHandler
+
+            logout:
+                path: app_logout
+                target: home
+
+            # Authenticated but not allowed -> 403 Access Denied page
+            access_denied_handler: App\Security\AccessDeniedHandler
+
+    # Role rules (first match wins). Controllers add their own checks too.
+    access_control:
+        - { path: ^/admin, roles: ROLE_ADMIN }
+        - { path: ^/records, roles: ROLE_STAFF }
+        - { path: ^/(profile|account), roles: ROLE_USER }

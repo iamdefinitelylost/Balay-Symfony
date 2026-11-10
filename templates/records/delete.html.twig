@@ -1,0 +1,15 @@
+{% extends 'panel/base.html.twig' %}
+
+{% block title %}Delete record – Balay{% endblock %}
+
+{% block content %}
+<form class="info panel" method="post" action="{{ path('app_record_delete', {id: record.id}) }}">
+  <h2>Delete this record?</h2>
+  <p><b>{{ record.title }}</b> ({{ record.city }})</p>
+  <p class="meta">This cannot be undone. Its photos
+    {% if bookings %}and its {{ bookings }} booking{{ bookings == 1 ? '' : 's' }}{% endif %} will be deleted too.</p>
+  <input type="hidden" name="_token" value="{{ csrf_token('record_action') }}">
+  <button class="btn danger" type="submit">Yes, delete record</button>
+  <a class="meta" href="{{ path('app_records') }}">No, go back</a>
+</form>
+{% endblock %}

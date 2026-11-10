@@ -1,0 +1,15 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}403 Access Denied – Balay{% endblock %}
+
+{% block body %}
+<div class="wrap">
+  <div class="info panel center">
+    <h1 style="font-size:64px">403</h1>
+    <h2>Access Denied</h2>
+    <p class="meta">Your account does not have permission to open this page.</p>
+    <a class="btn" href="{{ path('app_post_login') }}">Go to my dashboard</a>
+    <a class="meta" href="{{ path('home') }}">Back to the site</a>
+  </div>
+</div>
+{% endblock %}

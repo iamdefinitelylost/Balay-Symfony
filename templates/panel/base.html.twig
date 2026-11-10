@@ -1,0 +1,25 @@
+{% extends 'base.html.twig' %}
+
+{# Shared layout for every logged-in page. The menu is role-based: each link only renders for roles allowed to use it. #}
+{% block body %}
+<div class="wrap">
+  <header class="top">
+    <a class="logo" href="{{ path('home') }}"><i></i>balay{% if is_granted('ROLE_ADMIN') %} admin{% elseif is_granted('ROLE_STAFF') %} staff{% endif %}</a>
+    <nav class="nav">
+      {% if is_granted('ROLE_ADMIN') %}
+        <a href="{{ path('app_admin') }}">Dashboard</a>
+        <a href="{{ path('app_admin_users') }}">Users</a>
+        <a href="{{ path('app_admin_bookings') }}">Bookings</a>
+      {% endif %}
+      {% if is_granted('ROLE_STAFF') %}
+        <a href="{{ path('app_records') }}">{{ is_granted('ROLE_ADMIN') ? 'All records' : 'Records' }}</a>
+      {% endif %}
+      <a href="{{ path('app_profile') }}">My profile</a>
+      <a href="{{ path('home') }}">View site</a>
+      <a href="{{ path('app_logout') }}">Log out</a>
+    </nav>
+  </header>
+  {% include 'panel/_flashes.html.twig' %}
+  {% block content %}{% endblock %}
+</div>
+{% endblock %}

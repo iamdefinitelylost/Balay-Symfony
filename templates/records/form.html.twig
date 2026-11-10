@@ -1,0 +1,47 @@
+{% extends 'panel/base.html.twig' %}
+
+{% block title %}{{ mode == 'new' ? 'New record' : 'Edit record' }} – Balay{% endblock %}
+
+{% block content %}
+<form class="info panel wide" method="post" enctype="multipart/form-data"
+      action="{{ mode == 'new' ? path('app_record_new') : path('app_record_edit', {id: record.id}) }}">
+  <h2>{{ mode == 'new' ? 'New record' : 'Edit record' }}</h2>
+  {% for e in errors %}<p class="err" role="alert">{{ e }}</p>{% endfor %}
+  <div class="fgrid">
+    <label class="full">Title<input name="title" value="{{ form.title }}" maxlength="120" required></label>
+    <label>City<input name="city" value="{{ form.city }}" maxlength="60" required></label>
+    <label>Type
+      <select name="type">{% for t in types %}<option{{ form.type == t ? ' selected' }}>{{ t }}</option>{% endfor %}</select>
+    </label>
+    <label>Price per night (₱)<input type="number" name="price" min="1" value="{{ form.price }}" required></label>
+    <label>Max guests<input type="number" name="max_guests" min="1" value="{{ form.max_guests }}" required></label>
+    <label>Host<input name="host" value="{{ form.host }}" maxlength="60" required></label>
+    <label>Amenities (comma separated)<input name="amenities" value="{{ form.amenities }}" maxlength="255"></label>
+    <label class="full">Description<textarea name="description">{{ form.description }}</textarea></label>
+    <label>Color 1<input type="color" name="color1" value="{{ form.color1 }}"></label>
+    <label>Color 2<input type="color" name="color2" value="{{ form.color2 }}"></label>
+    <label class="full" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="is_new" value="1"{{ form.is_new ? ' checked' }}> Show “New” tag</label>
+    <label class="full">Add photos (JPG, PNG or WebP, max 5 MB each, up to 10 per stay)
+      <input type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple>
+    </label>
+  </div>
+  <input type="hidden" name="_token" value="{{ csrf_token('record_form') }}">
+  <button class="btn" type="submit">{{ mode == 'new' ? 'Create record' : 'Save changes' }}</button>
+  <a class="meta" href="{{ path('app_records') }}">Cancel</a>
+</form>
+
+{% if mode == 'edit' and images %}
+<div class="info panel wide">
+  <h2>Photos</h2>
+  <div class="photos">
+    {% for im in images %}
+      <form class="ph" method="post" action="{{ path('app_record_photo_delete', {id: record.id, photoId: im.id}) }}" onsubmit="return confirm('Remove this photo?')">
+        <img src="/uploads/{{ im.filename }}" alt="">
+        <input type="hidden" name="_token" value="{{ csrf_token('photo_action') }}">
+        <button type="submit" aria-label="Remove photo">✕</button>
+      </form>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

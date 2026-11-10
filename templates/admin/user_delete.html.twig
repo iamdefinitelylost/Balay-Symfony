@@ -1,0 +1,17 @@
+{% extends 'panel/base.html.twig' %}
+
+{% block title %}Delete account – Balay admin{% endblock %}
+
+{% block content %}
+<form class="info panel" method="post" action="{{ path('app_admin_user_delete', {id: user.id}) }}">
+  <h2>Delete this account?</h2>
+  <p><b>{{ user.name }}</b> ({{ user.email }}, {{ user.role }})</p>
+  <p class="meta">This cannot be undone.
+    {% if bookings %}Their {{ bookings }} booking{{ bookings == 1 ? '' : 's' }} will be deleted too.{% endif %}
+    {% if records %}Their {{ records }} record{{ records == 1 ? '' : 's' }} will stay but have no owner (only admins can manage them).{% endif %}
+    You can disable the account instead to keep its history.</p>
+  <input type="hidden" name="_token" value="{{ csrf_token('user_action') }}">
+  <button class="btn danger" type="submit">Yes, delete account</button>
+  <a class="meta" href="{{ path('app_admin_users') }}">No, go back</a>
+</form>
+{% endblock %}

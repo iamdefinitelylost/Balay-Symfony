@@ -1,0 +1,47 @@
+{% extends 'panel/base.html.twig' %}
+
+{% block title %}Users – Balay admin{% endblock %}
+
+{% block content %}
+<div class="bar"><h1>User accounts</h1><a class="btn sm" href="{{ path('app_admin_user_new') }}">+ New admin / staff</a></div>
+
+<form class="toolbar" method="get" action="{{ path('app_admin_users') }}">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search name or email" aria-label="Search">
+  <select name="role" aria-label="Role">
+    <option value="">All roles</option>
+    {% for r in ['admin', 'staff', 'customer'] %}<option value="{{ r }}"{{ role == r ? ' selected' }}>{{ r|capitalize }}</option>{% endfor %}
+  </select>
+  <select name="status" aria-label="Status">
+    <option value="">Any status</option>
+    {% for s in ['active', 'disabled'] %}<option value="{{ s }}"{{ status == s ? ' selected' }}>{{ s|capitalize }}</option>{% endfor %}
+  </select>
+  <button class="btn sm" type="submit">Filter</button>
+</form>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Name</th><th>Username / Email</th><th>Role</th><th>Status</th><th>Date created</th><th>Actions</th></tr></thead>
+  <tbody>
+  {% for u in users %}
+    <tr>
+      <td>{{ u.name }}{% if u.id == app.user.id %} <span class="meta">(you)</span>{% endif %}</td>
+      <td>{{ u.email }}</td>
+      <td><span class="pill {{ u.role }}">{{ u.role }}</span></td>
+      <td><span class="pill {{ u.status }}">{{ u.status }}</span></td>
+      <td>{{ u.created_at|slice(0, 10) }}</td>
+      <td><div class="rowbtn">
+        <a class="sm btn ghost" href="{{ path('app_admin_user_edit', {id: u.id}) }}">Edit</a>
+        {% if u.id != app.user.id %}
+          <form class="inline" method="post" action="{{ path('app_admin_user_status', {id: u.id}) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('user_action') }}">
+            <button class="sm" type="submit">{{ u.status == 'active' ? 'Disable' : 'Enable' }}</button>
+          </form>
+          <a class="sm btn danger" href="{{ path('app_admin_user_delete', {id: u.id}) }}">Delete</a>
+        {% endif %}
+      </div></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="meta">No accounts match.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

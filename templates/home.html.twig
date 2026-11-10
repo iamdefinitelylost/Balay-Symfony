@@ -1,0 +1,39 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Balay – Book a stay in Negros Oriental{% endblock %}
+
+{% block body %}
+<div class="wrap">
+  <header class="top">
+    <div class="logo"><i></i>balay</div>
+    <nav class="nav" id="nav"></nav>
+  </header>
+  <section class="hero">
+    <h1>A home for every trip</h1>
+    <p>Book beach houses, mountain cabins and city rooms hosted by locals across Negros Oriental.</p>
+    <div class="search" role="search">
+      <label>Where
+        <select id="q-city"><option value="">Anywhere</option>
+          {% for c in cities %}<option>{{ c }}</option>{% endfor %}
+        </select></label>
+      <label>Check in<input type="date" id="q-in"></label>
+      <label>Check out<input type="date" id="q-out"></label>
+      <label>Guests
+        <select id="q-guests">
+          <option value="1">1 guest</option><option value="2" selected>2 guests</option>
+          <option value="4">4 guests</option><option value="6">6 guests</option><option value="8">8 guests</option>
+        </select></label>
+      <button class="btn" id="go">Search stays</button>
+    </div>
+  </section>
+  <div class="chips" id="chips" role="group" aria-label="Filter by type"></div>
+  <div class="bar"><h2 id="count">Stays</h2><span>Prices per night in PHP</span></div>
+  <div class="grid" id="grid"></div>
+</div>
+<dialog id="dlg" aria-label="Stay details"></dialog>
+{% endblock %}
+
+{% block scripts %}
+<script>window.ME = {{ me_json|raw }};</script>
+<script src="/assets/app.js"></script>
+{% endblock %}

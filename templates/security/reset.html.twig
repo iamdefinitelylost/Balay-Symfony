@@ -1,0 +1,32 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Choose a new password – Balay{% endblock %}
+
+{% block body %}
+<div class="wrap">
+  <header class="top"><a class="logo" href="{{ path('home') }}"><i></i>balay</a></header>
+  {% if valid %}
+  <form class="info panel" id="f" data-api="/api/auth/reset">
+    <h2>Choose a new password</h2>
+    <input type="hidden" name="token" value="{{ token }}">
+    <label>New password (8+ characters)<input type="password" name="password" minlength="8" autocomplete="new-password" required autofocus></label>
+    <label>Confirm new password<input type="password" name="confirm" minlength="8" autocomplete="new-password" required></label>
+    <p class="err" id="err" role="alert"></p>
+    <button class="btn" type="submit">Save new password</button>
+  </form>
+  <div class="info panel" id="done" hidden>
+    <h2>Password updated</h2>
+    <p>You can now log in with your new password.</p>
+    <a class="btn" href="{{ path('app_login') }}">Log in</a>
+  </div>
+  {% else %}
+  <div class="info panel">
+    <h2>This link has expired</h2>
+    <p class="meta">Reset links work once and only for one hour.</p>
+    <a class="btn" href="{{ path('app_forgot_password') }}">Get a new link</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}{% if valid %}<script src="/assets/auth-pages.js"></script>{% endif %}{% endblock %}

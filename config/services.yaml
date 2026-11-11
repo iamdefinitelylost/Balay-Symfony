@@ -1,5 +1,9 @@
 parameters:
     uploads_dir: '%kernel.project_dir%/public/uploads'
+    # Defaults for local Docker development; override with real environment variables in production.
+    env(APP_URL): 'http://localhost:8080'
+    env(MAIL_FROM): 'Balay <no-reply@balay.test>'
+    env(MAILER_DSN): 'smtp://mailpit:1025'
 
 services:
     _defaults:

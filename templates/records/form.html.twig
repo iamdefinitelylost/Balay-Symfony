@@ -18,6 +18,9 @@
     <label>Host<input name="host" value="{{ form.host }}" maxlength="60" required></label>
     <label>Amenities (comma separated)<input name="amenities" value="{{ form.amenities }}" maxlength="255"></label>
     <label class="full">Description<textarea name="description">{{ form.description }}</textarea></label>
+    <label>Latitude (map pin, optional)<input name="latitude" inputmode="decimal" value="{{ form.latitude }}" placeholder="e.g. 9.3068"></label>
+    <label>Longitude (map pin, optional)<input name="longitude" inputmode="decimal" value="{{ form.longitude }}" placeholder="e.g. 123.3054"></label>
+    <p class="meta full">Tip: right-click the place in Google Maps or OpenStreetMap and copy the two numbers. Stays without a pin do not show on the map.</p>
     <label>Color 1<input type="color" name="color1" value="{{ form.color1 }}"></label>
     <label>Color 2<input type="color" name="color2" value="{{ form.color2 }}"></label>
     <label class="full" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="is_new" value="1"{{ form.is_new ? ' checked' }}> Show “New” tag</label>

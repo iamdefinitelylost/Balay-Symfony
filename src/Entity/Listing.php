@@ -57,6 +57,12 @@ class Listing
     #[ORM\Column(length: 7)]
     private string $color2 = '#F2A93B';
 
+    #[ORM\Column(type: Types::DECIMAL, precision: 9, scale: 6, nullable: true)]
+    private ?string $latitude = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 9, scale: 6, nullable: true)]
+    private ?string $longitude = null;
+
     /** Who created this record. Staff may only edit/delete records where this is themselves. */
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(name: 'created_by', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
@@ -84,6 +90,9 @@ class Listing
         $this->description = $f['description'];
         $this->color1 = $f['color1'];
         $this->color2 = $f['color2'];
+        $hasPin = ($f['latitude'] ?? '') !== '' && ($f['longitude'] ?? '') !== '';
+        $this->latitude = $hasPin ? number_format((float) $f['latitude'], 6, '.', '') : null;
+        $this->longitude = $hasPin ? number_format((float) $f['longitude'], 6, '.', '') : null;
 
         return $this;
     }
@@ -95,6 +104,7 @@ class Listing
             'price' => $this->price, 'max_guests' => $this->maxGuests, 'host' => $this->host,
             'is_new' => $this->isNew ? 1 : 0, 'amenities' => $this->amenities, 'description' => $this->description,
             'color1' => $this->color1, 'color2' => $this->color2,
+            'latitude' => $this->latitude ?? '', 'longitude' => $this->longitude ?? '',
         ];
     }
 
@@ -156,6 +166,16 @@ class Listing
     public function getDescription(): string
     {
         return $this->description;
+    }
+
+    public function getLatitude(): ?string
+    {
+        return $this->latitude;
+    }
+
+    public function getLongitude(): ?string
+    {
+        return $this->longitude;
     }
 
     public function getCreatedBy(): ?User

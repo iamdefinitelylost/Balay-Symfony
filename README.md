@@ -74,3 +74,23 @@ Roles live in `users.role` (`customer`, `staff`, `admin`); `ROLE_ADMIN` inherits
 Controllers only validate input and call repositories / the EntityManager; queries live in the repositories.
 The public JSON API (`/api/listings`, `/api/book`) still uses plain DBAL on purpose: the booking flow needs a
 `SELECT ... FOR UPDATE` row lock to prevent double bookings.
+
+## Extra features
+
+| Feature | How it works |
+|---|---|
+| Reviews and ratings of a stay | Guests with a finished trip review from the stay page (`/api/listings/{id}/reviews`); the stay's rating is recomputed as the average of its reviews |
+| Owner reviews the guest | Staff/admin: **Guests** menu (`GuestReviewController`, `GuestReviewVoter`). A review is possible after check-out; the customer sees it on **My bookings** |
+| Favorites | Heart on each stay, saved per account (`favorites` table); **Saved** filter chip |
+| Availability calendar | Booked nights are crossed out on the stay page; picking two days fills the dates |
+| Map | Leaflet + OpenStreetMap (no API key). **Map** toggle on the home page and a pin on each stay page; set a stay's pin with latitude/longitude in Records |
+| Password reset | `/forgot-password` emails a one-hour, single-use link. Emails go to **Mailpit** at http://localhost:8025 |
+
+Mailpit needs this service in `docker-compose.yml` (under `services:`):
+
+```yaml
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025"
+```

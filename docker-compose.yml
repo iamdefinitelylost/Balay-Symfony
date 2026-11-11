@@ -1,4 +1,9 @@
 services:
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025"
+
   php:
     build: .
     working_dir: /var/www/html

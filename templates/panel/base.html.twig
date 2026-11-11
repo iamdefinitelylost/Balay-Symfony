@@ -13,6 +13,7 @@
       {% endif %}
       {% if is_granted('ROLE_STAFF') %}
         <a href="{{ path('app_records') }}">{{ is_granted('ROLE_ADMIN') ? 'All records' : 'Records' }}</a>
+        <a href="{{ path('app_guests') }}">Guests</a>
       {% endif %}
       <a href="{{ path('app_profile') }}">My profile</a>
       <a href="{{ path('home') }}">View site</a>

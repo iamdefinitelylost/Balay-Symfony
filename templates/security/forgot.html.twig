@@ -1,0 +1,25 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Forgot password – Balay{% endblock %}
+
+{% block body %}
+<div class="wrap">
+  <header class="top"><a class="logo" href="{{ path('home') }}"><i></i>balay</a></header>
+  <form class="info panel" id="f" data-api="/api/auth/forgot">
+    <h2>Forgot your password?</h2>
+    <p class="meta">Enter your account email and we will send you a link to choose a new one.</p>
+    <label>Email<input type="email" name="email" autocomplete="email" required autofocus></label>
+    <p class="err" id="err" role="alert"></p>
+    <button class="btn" type="submit">Send reset link</button>
+    <a class="meta" href="{{ path('app_login') }}">Back to log in</a>
+  </form>
+  <div class="info panel" id="done" hidden>
+    <h2>Check your inbox</h2>
+    <p>If that email has an account, a reset link is on its way. It works for one hour.</p>
+    <p class="meta">Running locally in Docker? Emails are caught by Mailpit at <a href="http://localhost:8025" target="_blank" rel="noopener">localhost:8025</a>.</p>
+    <a class="btn" href="{{ path('home') }}">Back to the site</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="/assets/auth-pages.js"></script>{% endblock %}

@@ -165,6 +165,7 @@ class RecordController extends AbstractController
         return [
             'title' => '', 'city' => '', 'type' => 'Beach', 'price' => '', 'max_guests' => '', 'host' => '',
             'is_new' => 0, 'amenities' => '', 'description' => '', 'color1' => '#1F8A8A', 'color2' => '#F2A93B',
+            'latitude' => '', 'longitude' => '',
         ];
     }
 
@@ -184,6 +185,8 @@ class RecordController extends AbstractController
             'description' => trim($b->getString('description')),
             'color1' => $b->getString('color1'),
             'color2' => $b->getString('color2'),
+            'latitude' => trim($b->getString('latitude')),
+            'longitude' => trim($b->getString('longitude')),
         ];
     }
 
@@ -204,6 +207,13 @@ class RecordController extends AbstractController
         }
         if (!preg_match('/^#[0-9a-fA-F]{6}$/', $f['color1']) || !preg_match('/^#[0-9a-fA-F]{6}$/', $f['color2'])) {
             $errors[] = 'Colors must look like #1F8A8A.';
+        }
+
+        if ($f['latitude'] !== '' || $f['longitude'] !== '') {
+            if (!is_numeric($f['latitude']) || !is_numeric($f['longitude'])
+                || abs((float) $f['latitude']) > 90 || abs((float) $f['longitude']) > 180) {
+                $errors[] = 'Enter both latitude (-90 to 90) and longitude (-180 to 180), or leave both empty.';
+            }
         }
 
         return $errors;

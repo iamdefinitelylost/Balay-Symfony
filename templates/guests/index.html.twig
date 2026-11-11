@@ -1,0 +1,39 @@
+{% extends 'panel/base.html.twig' %}
+
+{% block title %}Guests – Balay{% endblock %}
+
+{% block content %}
+{% import 'panel/_stars.html.twig' as ui %}
+<div class="bar"><h1>Guests</h1></div>
+<p class="meta">{{ is_granted('ROLE_ADMIN') ? 'Every booking. As an admin you can review any guest.' : 'People who booked your stays. You can review a guest once their stay has ended.' }}</p>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Guest</th><th>Stay</th><th>Dates</th><th>Status</th><th>Other hosts say</th><th>Your review</th></tr></thead>
+  <tbody>
+  {% for it in items %}
+    {% set b = it.booking %}
+    <tr>
+      <td>{{ b.guestName }}<br><span class="meta">{{ b.guestEmail }}</span></td>
+      <td>{{ b.listing.title }}</td>
+      <td>{{ b.checkIn|date('Y-m-d') }} to {{ b.checkOut|date('Y-m-d') }}</td>
+      <td><span class="pill {{ b.status }}">{{ b.status }}</span></td>
+      <td>{% if it.summary %}★ {{ it.summary.avg }} <span class="meta">({{ it.summary.count }})</span>{% else %}<span class="meta">No reviews yet</span>{% endif %}</td>
+      <td>
+        {% if it.review %}
+          <span class="stars">{{ ui.stars(it.review.rating) }}</span>
+          <a class="sm btn ghost" href="{{ path('app_guest_review', {id: b.id}) }}">Edit</a>
+        {% elseif it.canReview %}
+          <a class="sm btn" href="{{ path('app_guest_review', {id: b.id}) }}">Review guest</a>
+        {% elseif b.status == 'confirmed' %}
+          <span class="meta">After the stay ends</span>
+        {% else %}
+          <span class="meta">—</span>
+        {% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="meta">No bookings yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

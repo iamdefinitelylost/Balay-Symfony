@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Service\PasswordResetService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -44,5 +45,17 @@ class SecurityController extends AbstractController
     public function logout(): never
     {
         throw new \LogicException('Handled by the logout key in security.yaml.');
+    }
+
+    #[Route('/forgot-password', name: 'app_forgot_password')]
+    public function forgotPassword(): Response
+    {
+        return $this->render('security/forgot.html.twig');
+    }
+
+    #[Route('/reset-password/{token}', name: 'app_reset_password', requirements: ['token' => '[a-f0-9]{64}'])]
+    public function resetPassword(string $token, PasswordResetService $resets): Response
+    {
+        return $this->render('security/reset.html.twig', ['token' => $token, 'valid' => $resets->isValid($token)]);
     }
 }

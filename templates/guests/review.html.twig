@@ -1,0 +1,24 @@
+{% extends 'panel/base.html.twig' %}
+
+{% block title %}Review guest – Balay{% endblock %}
+
+{% block content %}
+{% import 'panel/_stars.html.twig' as ui %}
+<form class="info panel" method="post" action="{{ path('app_guest_review', {id: booking.id}) }}">
+  <h2>{{ existing ? 'Edit your review' : 'Review this guest' }}</h2>
+  <p><b>{{ booking.guestName }}</b><br>
+    <span class="meta">{{ booking.listing.title }} · {{ booking.checkIn|date('Y-m-d') }} to {{ booking.checkOut|date('Y-m-d') }}</span></p>
+  {% if summary %}<p class="meta">Other hosts rate this guest ★ {{ summary.avg }} ({{ summary.count }} review{{ summary.count == 1 ? '' : 's' }}).</p>{% endif %}
+  {% for e in errors %}<p class="err" role="alert">{{ e }}</p>{% endfor %}
+  <label>Rating
+    <select name="rating">
+      {% for n in [5, 4, 3, 2, 1] %}<option value="{{ n }}"{{ form.rating == n ? ' selected' }}>{{ ui.stars(n) }} ({{ n }})</option>{% endfor %}
+    </select>
+  </label>
+  <label>Comment (optional)<textarea name="comment" maxlength="1000" placeholder="Was the guest respectful, tidy, on time?">{{ form.comment }}</textarea></label>
+  <p class="meta">The guest can see your rating and comment on their bookings page.</p>
+  <input type="hidden" name="_token" value="{{ csrf_token('guest_review') }}">
+  <button class="btn" type="submit">{{ existing ? 'Save changes' : 'Post review' }}</button>
+  <a class="meta" href="{{ path('app_guests') }}">Cancel</a>
+</form>
+{% endblock %}

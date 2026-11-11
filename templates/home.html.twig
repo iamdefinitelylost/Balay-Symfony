@@ -2,6 +2,10 @@
 
 {% block title %}Balay – Book a stay in Negros Oriental{% endblock %}
 
+{% block head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+{% endblock %}
+
 {% block body %}
 <div class="wrap">
   <header class="top">
@@ -27,13 +31,22 @@
     </div>
   </section>
   <div class="chips" id="chips" role="group" aria-label="Filter by type"></div>
-  <div class="bar"><h2 id="count">Stays</h2><span>Prices per night in PHP</span></div>
+  <div class="bar">
+    <h2 id="count">Stays</h2>
+    <div class="view-toggle">
+      <span>Prices per night in PHP</span>
+      <button class="chip" data-view="grid" aria-pressed="true">Grid</button>
+      <button class="chip" data-view="map" aria-pressed="false">Map</button>
+    </div>
+  </div>
+  <div id="map" hidden></div>
   <div class="grid" id="grid"></div>
 </div>
 <dialog id="dlg" aria-label="Stay details"></dialog>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>window.ME = {{ me_json|raw }};</script>
 <script src="/assets/app.js"></script>
 {% endblock %}

@@ -79,7 +79,11 @@ class BookingController extends ApiController
         $u = $this->needLogin($request);
 
         return $this->json($this->db->fetchAllAssociative(
-            'SELECT b.*, l.title, l.city FROM bookings b JOIN listings l ON l.id = b.listing_id WHERE b.user_id = ? ORDER BY b.check_in DESC',
+            "SELECT b.*, l.title, l.city, gr.rating AS host_rating, gr.comment AS host_comment, hu.name AS host_name
+             FROM bookings b JOIN listings l ON l.id = b.listing_id
+             LEFT JOIN guest_reviews gr ON gr.booking_id = b.id
+             LEFT JOIN users hu ON hu.id = gr.reviewer_id
+             WHERE b.user_id = ? ORDER BY b.check_in DESC",
             [$u['id']]
         ));
     }

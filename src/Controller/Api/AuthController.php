@@ -4,6 +4,7 @@ namespace App\Controller\Api;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
+use App\Service\PasswordResetService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,6 +22,7 @@ class AuthController extends ApiController
         private UserRepository $users,
         private EntityManagerInterface $em,
         private UserPasswordHasherInterface $hasher,
+        private PasswordResetService $resets,
     ) {
     }
 
@@ -67,6 +69,34 @@ class AuthController extends ApiController
         $user->setPassword($this->hasher->hashPassword($user, $pass));
         $this->em->persist($user);
         $this->em->flush();
+
+        return $this->json(['ok' => true]);
+    }
+
+    /** Always answers ok, so nobody can find out which emails have an account. */
+    #[Route('/forgot', methods: ['POST'])]
+    public function forgot(Request $request): JsonResponse
+    {
+        $email = strtolower(trim($this->body($request)['email'] ?? ''));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->fail('Enter a valid email.', 422);
+        }
+        $this->resets->request($email);
+
+        return $this->json(['ok' => true]);
+    }
+
+    #[Route('/reset', methods: ['POST'])]
+    public function reset(Request $request): JsonResponse
+    {
+        $b = $this->body($request);
+        $password = (string) ($b['password'] ?? '');
+        if (strlen($password) < 8) {
+            $this->fail('Password must be at least 8 characters.', 422);
+        }
+        if (!$this->resets->reset((string) ($b['token'] ?? ''), $password)) {
+            $this->fail('This reset link is invalid or has expired. Request a new one.', 400);
+        }
 
         return $this->json(['ok' => true]);
     }

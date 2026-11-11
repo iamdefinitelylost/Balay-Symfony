@@ -1,6 +1,10 @@
 CREATE DATABASE IF NOT EXISTS balay CHARACTER SET utf8mb4;
 USE balay;
 
+DROP TABLE IF EXISTS guest_reviews;
+DROP TABLE IF EXISTS password_resets;
+DROP TABLE IF EXISTS reviews;
+DROP TABLE IF EXISTS favorites;
 DROP TABLE IF EXISTS listing_images;
 DROP TABLE IF EXISTS bookings;
 DROP TABLE IF EXISTS listings;
@@ -31,6 +35,8 @@ CREATE TABLE listings (
   description TEXT NOT NULL,
   color1 CHAR(7) NOT NULL,
   color2 CHAR(7) NOT NULL,
+  latitude DECIMAL(9,6) NULL,
+  longitude DECIMAL(9,6) NULL,
   created_by INT NULL,
   created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
@@ -61,6 +67,54 @@ CREATE TABLE bookings (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE reviews (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  listing_id INT NOT NULL,
+  user_id INT NOT NULL,
+  rating TINYINT NOT NULL,
+  comment TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY one_review_per_guest (listing_id, user_id),
+  FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE favorites (
+  user_id INT NOT NULL,
+  listing_id INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id, listing_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE
+);
+
+CREATE TABLE password_resets (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  token_hash CHAR(64) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX (token_hash),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- The owner of a stay reviews the guest who stayed there (one review per booking).
+CREATE TABLE guest_reviews (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  booking_id INT NOT NULL,
+  listing_id INT NOT NULL,
+  guest_id INT NOT NULL,
+  reviewer_id INT NULL,
+  rating TINYINT NOT NULL,
+  comment TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY one_review_per_booking (booking_id),
+  FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+  FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
+  FOREIGN KEY (guest_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (reviewer_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
 INSERT INTO users (name,email,password_hash,role) VALUES
   ('Balay Admin','admin@balay.test','$2y$10$qHSwQWsW7C/0zgMtRvugYONVJT4Rnfu82piqFkWeTeH5mi9ACjAUO','admin'),
   ('Sample Staff','staff@balay.test','$2y$10$K/k/IC4PUqZpXNL0KnSkZeX934pO4bk5aXXmWwVJTznuuellnaoQe','staff');
@@ -78,3 +132,13 @@ INSERT INTO listings (title,city,type,price,max_guests,rating,reviews,host,is_ne
 -- Default admin: admin@balay.test / Admin123!  (change this password after first login)
 
 UPDATE listings SET created_by = (SELECT id FROM users WHERE email='admin@balay.test');
+
+-- approximate map pins for the sample stays
+UPDATE listings SET latitude=9.1905, longitude=123.264 WHERE title='Bamboo beach house';
+UPDATE listings SET latitude=9.306, longitude=123.3055 WHERE title='Garden room near Rizal Blvd';
+UPDATE listings SET latitude=9.279, longitude=123.209 WHERE title='Hillside cabin with valley view';
+UPDATE listings SET latitude=9.199, longitude=123.511 WHERE title='Island villa with pool';
+UPDATE listings SET latitude=9.249, longitude=123.293 WHERE title='Heritage house studio';
+UPDATE listings SET latitude=9.286, longitude=123.215 WHERE title='Treehouse by the river';
+UPDATE listings SET latitude=9.3085, longitude=123.3085 WHERE title='Family apartment, city centre';
+UPDATE listings SET latitude=9.195, longitude=123.2605 WHERE title='Dive lodge by the reef';

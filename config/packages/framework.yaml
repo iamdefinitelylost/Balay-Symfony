@@ -9,3 +9,5 @@ framework:
         cookie_secure: auto
     php_errors:
         log: true
+    mailer:
+        dsn: '%env(MAILER_DSN)%'

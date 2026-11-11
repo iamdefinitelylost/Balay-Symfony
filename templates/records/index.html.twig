@@ -31,9 +31,9 @@
       <td>{{ r.city }}</td>
       <td>{{ r.type }}</td>
       <td>₱{{ r.price|number_format }}</td>
-      <td>{{ r.max_guests }}</td>
+      <td>{{ r.maxGuests }}</td>
       <td>{{ r.host }}</td>
-      <td>{{ r.owner_name ?? '—' }}{% if r.created_by is not null and r.created_by == app.user.id %} <span class="meta">(you)</span>{% endif %}</td>
+      <td>{{ r.createdBy.name ?? '—' }}{% if r.createdBy is not null and r.createdBy.id == app.user.id %} <span class="meta">(you)</span>{% endif %}</td>
       <td>
         {% if is_granted('RECORD_MANAGE', r) %}
           <div class="rowbtn">

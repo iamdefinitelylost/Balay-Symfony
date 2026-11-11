@@ -2,6 +2,8 @@
 
 namespace App\Security;
 
+use App\Entity\Listing;
+use App\Entity\User;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
@@ -18,13 +20,13 @@ class RecordVoter extends Voter
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        return $attribute === self::MANAGE && is_array($subject) && array_key_exists('created_by', $subject);
+        return $attribute === self::MANAGE && $subject instanceof Listing;
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
     {
         $user = $token->getUser();
-        if (!$user instanceof AppUser) {
+        if (!$user instanceof User) {
             return false;
         }
         $roles = $user->getRoles();
@@ -32,8 +34,8 @@ class RecordVoter extends Voter
             return true;
         }
 
-        return in_array('ROLE_STAFF', $roles, true)
-            && $subject['created_by'] !== null
-            && (int) $subject['created_by'] === $user->getId();
+        $owner = $subject->getCreatedBy();
+
+        return in_array('ROLE_STAFF', $roles, true) && $owner !== null && $owner->getId() === $user->getId();
     }
 }

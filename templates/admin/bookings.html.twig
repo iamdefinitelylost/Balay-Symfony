@@ -10,9 +10,9 @@
   {% for b in bookings %}
     <tr>
       <td>BAL-{{ '%05d'|format(b.id) }}</td>
-      <td>{{ b.title }}</td>
-      <td>{{ b.guest_name }}<br><span class="meta">{{ b.guest_email }}</span></td>
-      <td>{{ b.check_in }} to {{ b.check_out }}</td>
+      <td>{{ b.listing.title }}</td>
+      <td>{{ b.guestName }}<br><span class="meta">{{ b.guestEmail }}</span></td>
+      <td>{{ b.checkIn|date('Y-m-d') }} to {{ b.checkOut|date('Y-m-d') }}</td>
       <td>{{ b.guests }}</td>
       <td>₱{{ b.total|number_format }}</td>
       <td><span class="pill {{ b.status }}">{{ b.status }}</span></td>

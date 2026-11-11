@@ -61,3 +61,16 @@ docker compose down -v         # stop AND wipe the database (schema.sql re-impor
 | CSRF protection | every POST form carries a `csrf_token()` that the controller checks |
 
 Roles live in `users.role` (`customer`, `staff`, `admin`); `ROLE_ADMIN` inherits `ROLE_STAFF`.
+
+## Entities and repositories (Code Quality)
+
+| Entity (`src/Entity`) | Table | Repository (`src/Repository`) |
+|---|---|---|
+| `User` (also the Security user) | `users` | `UserRepository` - search/filter, `emailTaken()` |
+| `Listing` (the "records") | `listings` | `ListingRepository` - search/filter, `distinctCities()` |
+| `ListingImage` | `listing_images` | `ListingImageRepository` |
+| `Booking` | `bookings` | `BookingRepository` - `revenue()`, `findAllWithListing()` |
+
+Controllers only validate input and call repositories / the EntityManager; queries live in the repositories.
+The public JSON API (`/api/listings`, `/api/book`) still uses plain DBAL on purpose: the booking flow needs a
+`SELECT ... FOR UPDATE` row lock to prevent double bookings.

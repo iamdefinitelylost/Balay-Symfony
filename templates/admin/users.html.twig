@@ -27,13 +27,13 @@
       <td>{{ u.email }}</td>
       <td><span class="pill {{ u.role }}">{{ u.role }}</span></td>
       <td><span class="pill {{ u.status }}">{{ u.status }}</span></td>
-      <td>{{ u.created_at|slice(0, 10) }}</td>
+      <td>{{ u.createdAt|date('Y-m-d') }}</td>
       <td><div class="rowbtn">
         <a class="sm btn ghost" href="{{ path('app_admin_user_edit', {id: u.id}) }}">Edit</a>
         {% if u.id != app.user.id %}
           <form class="inline" method="post" action="{{ path('app_admin_user_status', {id: u.id}) }}">
             <input type="hidden" name="_token" value="{{ csrf_token('user_action') }}">
-            <button class="sm" type="submit">{{ u.status == 'active' ? 'Disable' : 'Enable' }}</button>
+            <button class="sm" type="submit">{{ u.active ? 'Disable' : 'Enable' }}</button>
           </form>
           <a class="sm btn danger" href="{{ path('app_admin_user_delete', {id: u.id}) }}">Delete</a>
         {% endif %}

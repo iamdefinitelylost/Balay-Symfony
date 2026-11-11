@@ -2,10 +2,14 @@
 
 namespace App\Controller;
 
-use App\Security\AppUser;
+use App\Entity\Listing;
+use App\Entity\User;
+use App\Repository\BookingRepository;
+use App\Repository\ListingImageRepository;
+use App\Repository\ListingRepository;
 use App\Security\RecordVoter;
 use App\Service\PhotoStorage;
-use Doctrine\DBAL\Connection;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,7 +18,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
- * Records = the stays (listings).
+ * Records = the stays (Listing entities).
  *  - Staff: create, see all shared records, edit/delete ONLY their own (RecordVoter).
  *  - Admin: full access to every record (ROLE_ADMIN inherits ROLE_STAFF).
  * Anyone else is stopped by security.yaml (^/records -> ROLE_STAFF) and #[IsGranted] below.
@@ -22,10 +26,13 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_STAFF')]
 class RecordController extends AbstractController
 {
-    private const TYPES = ['Beach', 'Mountain', 'City'];
-
-    public function __construct(private Connection $db, private PhotoStorage $photos)
-    {
+    public function __construct(
+        private ListingRepository $listings,
+        private ListingImageRepository $images,
+        private BookingRepository $bookings,
+        private EntityManagerInterface $em,
+        private PhotoStorage $photos,
+    ) {
     }
 
     #[Route('/records', name: 'app_records')]
@@ -35,25 +42,9 @@ class RecordController extends AbstractController
         $type = $request->query->getString('type');
         $owner = $request->query->getString('owner');
 
-        $sql = 'SELECT l.id, l.title, l.city, l.type, l.price, l.max_guests, l.host, l.created_by, l.created_at, u.name AS owner_name
-                FROM listings l LEFT JOIN users u ON u.id = l.created_by WHERE 1';
-        $p = [];
-        if ($q !== '') {
-            $sql .= ' AND (l.title LIKE ? OR l.city LIKE ? OR l.host LIKE ?)';
-            array_push($p, "%$q%", "%$q%", "%$q%");
-        }
-        if (in_array($type, self::TYPES, true)) {
-            $sql .= ' AND l.type = ?';
-            $p[] = $type;
-        }
-        if ($owner === 'mine') {
-            $sql .= ' AND l.created_by = ?';
-            $p[] = $this->currentId();
-        }
-
         return $this->render('records/index.html.twig', [
-            'records' => $this->db->fetchAllAssociative($sql . ' ORDER BY l.id DESC', $p),
-            'q' => $q, 'type' => $type, 'owner' => $owner, 'types' => self::TYPES,
+            'records' => $this->listings->search($q, $type, $owner === 'mine' ? $this->currentId() : null),
+            'q' => $q, 'type' => $type, 'owner' => $owner, 'types' => Listing::TYPES,
         ]);
     }
 
@@ -68,14 +59,10 @@ class RecordController extends AbstractController
             $form = $this->readForm($request);
             $errors = $this->validate($form);
             if (!$errors) {
-                $cols = implode(',', array_keys($form));
-                $marks = implode(',', array_fill(0, count($form), '?'));
-                $this->db->executeStatement(
-                    "INSERT INTO listings ($cols, created_by) VALUES ($marks, ?)",
-                    [...array_values($form), $this->currentId()]
-                );
-                $id = (int) $this->db->lastInsertId();
-                $this->flashUploads($this->photos->store($id, $request->files->get('photos')));
+                $listing = (new Listing())->fill($form)->setCreatedBy($this->em->getReference(User::class, $this->currentId()));
+                $this->em->persist($listing);
+                $this->em->flush();
+                $this->flashUploads($this->photos->store($listing, $request->files->get('photos')));
                 $this->addFlash('success', 'Record created.');
 
                 return $this->redirectToRoute('app_records');
@@ -83,15 +70,15 @@ class RecordController extends AbstractController
         }
 
         return $this->render('records/form.html.twig', [
-            'mode' => 'new', 'form' => $form, 'errors' => $errors, 'record' => null, 'images' => [], 'types' => self::TYPES,
+            'mode' => 'new', 'form' => $form, 'errors' => $errors, 'record' => null, 'images' => [], 'types' => Listing::TYPES,
         ], new Response('', $errors ? 422 : 200));
     }
 
     #[Route('/records/{id}/edit', name: 'app_record_edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     public function edit(int $id, Request $request): Response
     {
-        $record = $this->findOwned($id); // 403 if staff opens someone else's record
-        $form = $record;
+        $listing = $this->findOwned($id); // 403 if staff opens someone else's record
+        $form = $listing->toFormArray();
         $errors = [];
 
         if ($request->isMethod('POST')) {
@@ -99,9 +86,9 @@ class RecordController extends AbstractController
             $form = $this->readForm($request);
             $errors = $this->validate($form);
             if (!$errors) {
-                $set = implode(',', array_map(fn (string $k) => "$k = ?", array_keys($form)));
-                $this->db->executeStatement("UPDATE listings SET $set WHERE id = ?", [...array_values($form), $id]);
-                $this->flashUploads($this->photos->store($id, $request->files->get('photos')));
+                $listing->fill($form);
+                $this->em->flush();
+                $this->flashUploads($this->photos->store($listing, $request->files->get('photos')));
                 $this->addFlash('success', 'Record updated.');
 
                 return $this->redirectToRoute('app_records');
@@ -109,18 +96,17 @@ class RecordController extends AbstractController
         }
 
         return $this->render('records/form.html.twig', [
-            'mode' => 'edit', 'form' => $form, 'errors' => $errors, 'record' => $record,
-            'images' => $this->db->fetchAllAssociative('SELECT id, filename FROM listing_images WHERE listing_id = ? ORDER BY sort_order, id', [$id]),
-            'types' => self::TYPES,
+            'mode' => 'edit', 'form' => $form, 'errors' => $errors, 'record' => $listing,
+            'images' => $this->images->forListing($listing), 'types' => Listing::TYPES,
         ], new Response('', $errors ? 422 : 200));
     }
 
     #[Route('/records/{id}/photos/{photoId}/delete', name: 'app_record_photo_delete', requirements: ['id' => '\d+', 'photoId' => '\d+'], methods: ['POST'])]
     public function deletePhoto(int $id, int $photoId, Request $request): RedirectResponse
     {
-        $this->findOwned($id);
+        $listing = $this->findOwned($id);
         $this->checkCsrf($request, 'photo_action');
-        $this->photos->deleteImage($id, $photoId);
+        $this->photos->deleteImage($listing, $photoId);
         $this->addFlash('success', 'Photo removed.');
 
         return $this->redirectToRoute('app_record_edit', ['id' => $id]);
@@ -130,35 +116,34 @@ class RecordController extends AbstractController
     #[Route('/records/{id}/delete', name: 'app_record_delete', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     public function delete(int $id, Request $request): Response
     {
-        $record = $this->findOwned($id);
+        $listing = $this->findOwned($id);
 
         if ($request->isMethod('POST')) {
             $this->checkCsrf($request, 'record_action');
-            $this->photos->deleteFilesFor($id);
-            $this->db->executeStatement('DELETE FROM listings WHERE id = ?', [$id]);
-            $this->addFlash('success', 'Record "' . $record['title'] . '" deleted.');
+            $title = $listing->getTitle();
+            $this->photos->deleteFilesFor($listing);
+            $this->em->remove($listing); // the database cascades its photo rows and bookings
+            $this->em->flush();
+            $this->addFlash('success', 'Record "' . $title . '" deleted.');
 
             return $this->redirectToRoute('app_records');
         }
 
         return $this->render('records/delete.html.twig', [
-            'record' => $record,
-            'bookings' => (int) $this->db->fetchOne('SELECT COUNT(*) FROM bookings WHERE listing_id = ?', [$id]),
+            'record' => $listing,
+            'bookings' => $this->bookings->count(['listing' => $listing]),
         ]);
     }
 
     // ---------- helpers ----------
 
     /** Loads a record and enforces the ownership rule (staff: own only, admin: any). */
-    private function findOwned(int $id): array
+    private function findOwned(int $id): Listing
     {
-        $record = $this->db->fetchAssociative('SELECT * FROM listings WHERE id = ?', [$id]);
-        if (!$record) {
-            throw $this->createNotFoundException('Record not found.');
-        }
-        $this->denyAccessUnlessGranted(RecordVoter::MANAGE, $record);
+        $listing = $this->listings->find($id) ?? throw $this->createNotFoundException('Record not found.');
+        $this->denyAccessUnlessGranted(RecordVoter::MANAGE, $listing);
 
-        return $record;
+        return $listing;
     }
 
     private function checkCsrf(Request $request, string $tokenId): void
@@ -172,7 +157,7 @@ class RecordController extends AbstractController
     {
         $u = $this->getUser();
 
-        return $u instanceof AppUser ? $u->getId() : 0;
+        return $u instanceof User ? (int) $u->getId() : 0;
     }
 
     private function blank(): array
@@ -211,7 +196,7 @@ class RecordController extends AbstractController
         if (mb_strlen($f['title']) > 120 || mb_strlen($f['city']) > 60 || mb_strlen($f['host']) > 60 || mb_strlen($f['amenities']) > 255) {
             $errors[] = 'One of the fields is too long.';
         }
-        if (!in_array($f['type'], self::TYPES, true)) {
+        if (!in_array($f['type'], Listing::TYPES, true)) {
             $errors[] = 'Choose a valid type.';
         }
         if ($f['price'] < 1 || $f['max_guests'] < 1) {

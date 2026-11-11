@@ -2,8 +2,9 @@
 
 namespace App\Controller\Api;
 
-use App\Security\AppUser;
-use Doctrine\DBAL\Connection;
+use App\Entity\User;
+use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -16,8 +17,11 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/auth')]
 class AuthController extends ApiController
 {
-    public function __construct(private Connection $db, private UserPasswordHasherInterface $hasher)
-    {
+    public function __construct(
+        private UserRepository $users,
+        private EntityManagerInterface $em,
+        private UserPasswordHasherInterface $hasher,
+    ) {
     }
 
     #[Route('/me', methods: ['GET'])]
@@ -55,15 +59,14 @@ class AuthController extends ApiController
         if (strlen($pass) < 8) {
             $this->fail('Password must be at least 8 characters.', 422);
         }
-        if ($this->db->fetchOne('SELECT id FROM users WHERE email = ?', [$email])) {
+        if ($this->users->emailTaken($email)) {
             $this->fail('That email already has an account. Log in instead.', 409);
         }
 
-        $hash = $this->hasher->hashPassword(new AppUser(0, $name, $email, '', 'customer', 'active'), $pass);
-        $this->db->executeStatement(
-            "INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,'customer')",
-            [$name, $email, $hash]
-        );
+        $user = (new User())->setName($name)->setEmail($email)->setRole('customer');
+        $user->setPassword($this->hasher->hashPassword($user, $pass));
+        $this->em->persist($user);
+        $this->em->flush();
 
         return $this->json(['ok' => true]);
     }

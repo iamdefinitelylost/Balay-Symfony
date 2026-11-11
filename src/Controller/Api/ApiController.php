@@ -2,7 +2,7 @@
 
 namespace App\Controller\Api;
 
-use App\Security\AppUser;
+use App\Entity\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -15,7 +15,7 @@ abstract class ApiController extends AbstractController
     {
         $u = $this->getUser();
 
-        return $u instanceof AppUser ? $u->toArray() : null;
+        return $u instanceof User ? $u->toArray() : null;
     }
 
     protected function needLogin(Request $request): array

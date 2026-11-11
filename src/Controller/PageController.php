@@ -2,8 +2,8 @@
 
 namespace App\Controller;
 
-use App\Security\AppUser;
-use Doctrine\DBAL\Connection;
+use App\Entity\User;
+use App\Repository\ListingRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -11,7 +11,7 @@ use Symfony\Component\Routing\Attribute\Route;
 /** Public pages: the home page and "My bookings" (/account is protected in security.yaml). */
 class PageController extends AbstractController
 {
-    public function __construct(private Connection $db)
+    public function __construct(private ListingRepository $listings)
     {
     }
 
@@ -21,8 +21,8 @@ class PageController extends AbstractController
         $user = $this->getUser();
 
         return $this->render('home.html.twig', [
-            'cities' => $this->db->fetchFirstColumn('SELECT DISTINCT city FROM listings ORDER BY city'),
-            'me_json' => json_encode($user instanceof AppUser ? $user->toArray() : null, JSON_HEX_TAG | JSON_HEX_AMP),
+            'cities' => $this->listings->distinctCities(),
+            'me_json' => json_encode($user instanceof User ? $user->toArray() : null, JSON_HEX_TAG | JSON_HEX_AMP),
         ]);
     }
 

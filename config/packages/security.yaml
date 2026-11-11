@@ -1,6 +1,6 @@
 security:
     password_hashers:
-        App\Security\AppUser: 'auto'
+        App\Entity\User: 'auto'
 
     providers:
         app_users:

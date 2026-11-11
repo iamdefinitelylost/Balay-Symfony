@@ -2,6 +2,7 @@
 
 namespace App\Security;
 
+use App\Entity\User;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,7 +19,7 @@ class ApiAuthHandler implements AuthenticationSuccessHandlerInterface, Authentic
     {
         $user = $token->getUser();
 
-        return new JsonResponse(['user' => $user instanceof AppUser ? $user->toArray() : null]);
+        return new JsonResponse(['user' => $user instanceof User ? $user->toArray() : null]);
     }
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): Response

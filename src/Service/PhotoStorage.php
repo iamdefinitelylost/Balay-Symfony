@@ -2,7 +2,10 @@
 
 namespace App\Service;
 
-use Doctrine\DBAL\Connection;
+use App\Entity\Listing;
+use App\Entity\ListingImage;
+use App\Repository\ListingImageRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
@@ -13,7 +16,8 @@ class PhotoStorage
     private const MAX_PHOTOS = 10;
 
     public function __construct(
-        private Connection $db,
+        private EntityManagerInterface $em,
+        private ListingImageRepository $images,
         #[Autowire('%uploads_dir%')] private string $dir,
     ) {
     }
@@ -22,20 +26,20 @@ class PhotoStorage
      * @param mixed $files value of $request->files->get('photos')
      * @return array{saved:int, skipped:string[]}
      */
-    public function store(int $listingId, mixed $files): array
+    public function store(Listing $listing, mixed $files): array
     {
         if ($files instanceof UploadedFile) {
             $files = [$files];
         }
-        $saved = 0;
-        $skipped = [];
         if (!is_array($files)) {
             return ['saved' => 0, 'skipped' => []];
         }
         if (!is_dir($this->dir)) {
             mkdir($this->dir, 0755, true);
         }
-        $count = (int) $this->db->fetchOne('SELECT COUNT(*) FROM listing_images WHERE listing_id = ?', [$listingId]);
+        $count = $this->images->count(['listing' => $listing]);
+        $saved = 0;
+        $skipped = [];
 
         foreach ($files as $file) {
             if (!$file instanceof UploadedFile) {
@@ -67,30 +71,29 @@ class PhotoStorage
                 $skipped[] = "$label: could not save.";
                 continue;
             }
-            $this->db->executeStatement(
-                'INSERT INTO listing_images (listing_id, filename, sort_order) VALUES (?,?,?)',
-                [$listingId, $name, $count + $saved]
-            );
+            $this->em->persist(new ListingImage($listing, $name, $count + $saved));
             ++$saved;
         }
+        $this->em->flush();
 
         return ['saved' => $saved, 'skipped' => $skipped];
     }
 
-    public function deleteImage(int $listingId, int $imageId): void
+    public function deleteImage(Listing $listing, int $imageId): void
     {
-        $fn = $this->db->fetchOne('SELECT filename FROM listing_images WHERE id = ? AND listing_id = ?', [$imageId, $listingId]);
-        if ($fn) {
-            @unlink($this->dir . '/' . basename($fn));
-            $this->db->executeStatement('DELETE FROM listing_images WHERE id = ?', [$imageId]);
+        $image = $this->images->findOneBy(['id' => $imageId, 'listing' => $listing]);
+        if ($image) {
+            @unlink($this->dir . '/' . basename($image->getFilename()));
+            $this->em->remove($image);
+            $this->em->flush();
         }
     }
 
     /** Remove the files of every photo of a stay (database rows go with the stay itself). */
-    public function deleteFilesFor(int $listingId): void
+    public function deleteFilesFor(Listing $listing): void
     {
-        foreach ($this->db->fetchFirstColumn('SELECT filename FROM listing_images WHERE listing_id = ?', [$listingId]) as $fn) {
-            @unlink($this->dir . '/' . basename($fn));
+        foreach ($this->images->findBy(['listing' => $listing]) as $image) {
+            @unlink($this->dir . '/' . basename($image->getFilename()));
         }
     }
 }

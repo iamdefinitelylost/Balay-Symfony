@@ -2,8 +2,8 @@
 
 namespace App\Controller;
 
-use App\Security\AppUser;
-use Doctrine\DBAL\Connection;
+use App\Entity\User;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,24 +16,20 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_USER')]
 class ProfileController extends AbstractController
 {
-    public function __construct(private Connection $db, private UserPasswordHasherInterface $hasher)
+    public function __construct(private EntityManagerInterface $em, private UserPasswordHasherInterface $hasher)
     {
     }
 
     #[Route('/profile', name: 'app_profile')]
     public function profile(): Response
     {
-        /** @var AppUser $user */
-        $user = $this->getUser();
-        $created = $this->db->fetchOne('SELECT created_at FROM users WHERE id = ?', [$user->getId()]);
-
-        return $this->render('profile/index.html.twig', ['me' => $user, 'created_at' => $created]);
+        return $this->render('profile/index.html.twig', ['me' => $this->getUser()]);
     }
 
     #[Route('/profile/password', name: 'app_profile_password', methods: ['GET', 'POST'])]
     public function password(Request $request, TokenStorageInterface $tokenStorage): Response
     {
-        /** @var AppUser $user */
+        /** @var User $user */
         $user = $this->getUser();
         $errors = [];
 
@@ -55,10 +51,8 @@ class ProfileController extends AbstractController
                 $errors[] = 'The new password and its confirmation do not match.';
             }
             if (!$errors) {
-                $this->db->executeStatement(
-                    'UPDATE users SET password_hash = ? WHERE id = ?',
-                    [$this->hasher->hashPassword($user, $new), $user->getId()]
-                );
+                $user->setPassword($this->hasher->hashPassword($user, $new));
+                $this->em->flush();
                 // End this session so the person signs in again with the new password.
                 $tokenStorage->setToken(null);
                 $request->getSession()->invalidate();

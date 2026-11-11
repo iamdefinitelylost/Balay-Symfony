@@ -8,7 +8,7 @@
   <div class="row"><span class="meta">Name</span><b>{{ me.name }}</b></div>
   <div class="row"><span class="meta">Email</span><b>{{ me.email }}</b></div>
   <div class="row"><span class="meta">Role</span><span class="pill {{ me.role }}">{{ me.role }}</span></div>
-  <div class="row"><span class="meta">Account created</span><b>{{ created_at|slice(0, 10) }}</b></div>
+  <div class="row"><span class="meta">Account created</span><b>{{ me.createdAt|date('Y-m-d') }}</b></div>
   <a class="btn" href="{{ path('app_profile_password') }}">Change password</a>
 </div>
 {% endblock %}

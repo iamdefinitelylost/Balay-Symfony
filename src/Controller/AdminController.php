@@ -2,8 +2,11 @@
 
 namespace App\Controller;
 
-use App\Security\AppUser;
-use Doctrine\DBAL\Connection;
+use App\Entity\User;
+use App\Repository\BookingRepository;
+use App\Repository\ListingRepository;
+use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,11 +24,15 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_ADMIN')]
 class AdminController extends AbstractController
 {
-    private const ROLES = ['admin', 'staff', 'customer'];
     private const NEW_ROLES = ['admin', 'staff'];
 
-    public function __construct(private Connection $db, private UserPasswordHasherInterface $hasher)
-    {
+    public function __construct(
+        private UserRepository $users,
+        private ListingRepository $listings,
+        private BookingRepository $bookings,
+        private EntityManagerInterface $em,
+        private UserPasswordHasherInterface $hasher,
+    ) {
     }
 
     // ---------- Dashboard ----------
@@ -33,17 +40,15 @@ class AdminController extends AbstractController
     #[Route('/admin', name: 'app_admin')]
     public function dashboard(): Response
     {
-        $one = fn (string $sql) => (int) $this->db->fetchOne($sql);
-
         return $this->render('admin/dashboard.html.twig', ['stats' => [
-            'users' => $one('SELECT COUNT(*) FROM users'),
-            'staff' => $one("SELECT COUNT(*) FROM users WHERE role='staff'"),
-            'admins' => $one("SELECT COUNT(*) FROM users WHERE role='admin'"),
-            'customers' => $one("SELECT COUNT(*) FROM users WHERE role='customer'"),
-            'disabled' => $one("SELECT COUNT(*) FROM users WHERE status='disabled'"),
-            'records' => $one('SELECT COUNT(*) FROM listings'),
-            'bookings' => $one("SELECT COUNT(*) FROM bookings WHERE status='confirmed'"),
-            'revenue' => $one("SELECT COALESCE(SUM(total),0) FROM bookings WHERE status='confirmed'"),
+            'users' => $this->users->count([]),
+            'staff' => $this->users->count(['role' => 'staff']),
+            'admins' => $this->users->count(['role' => 'admin']),
+            'customers' => $this->users->count(['role' => 'customer']),
+            'disabled' => $this->users->count(['status' => 'disabled']),
+            'records' => $this->listings->count([]),
+            'bookings' => $this->bookings->count(['status' => 'confirmed']),
+            'revenue' => $this->bookings->revenue(),
         ]]);
     }
 
@@ -56,23 +61,8 @@ class AdminController extends AbstractController
         $role = $request->query->getString('role');
         $status = $request->query->getString('status');
 
-        $sql = 'SELECT id, name, email, role, status, created_at FROM users WHERE 1';
-        $p = [];
-        if ($q !== '') {
-            $sql .= ' AND (name LIKE ? OR email LIKE ?)';
-            array_push($p, "%$q%", "%$q%");
-        }
-        if (in_array($role, self::ROLES, true)) {
-            $sql .= ' AND role = ?';
-            $p[] = $role;
-        }
-        if (in_array($status, ['active', 'disabled'], true)) {
-            $sql .= ' AND status = ?';
-            $p[] = $status;
-        }
-
         return $this->render('admin/users.html.twig', [
-            'users' => $this->db->fetchAllAssociative($sql . ' ORDER BY created_at DESC, id DESC', $p),
+            'users' => $this->users->search($q, $role, $status),
             'q' => $q, 'role' => $role, 'status' => $status,
         ]);
     }
@@ -92,11 +82,10 @@ class AdminController extends AbstractController
                 $errors[] = 'Password must be at least 8 characters.';
             }
             if (!$errors) {
-                $hash = $this->hasher->hashPassword(new AppUser(0, $form['name'], $form['email'], '', $form['role'], 'active'), $password);
-                $this->db->executeStatement(
-                    'INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)',
-                    [$form['name'], $form['email'], $hash, $form['role']]
-                );
+                $user = (new User())->setName($form['name'])->setEmail($form['email'])->setRole($form['role']);
+                $user->setPassword($this->hasher->hashPassword($user, $password));
+                $this->em->persist($user);
+                $this->em->flush();
                 $this->addFlash('success', "Account created for {$form['name']} ({$form['role']}).");
 
                 return $this->redirectToRoute('app_admin_users');
@@ -113,21 +102,19 @@ class AdminController extends AbstractController
     {
         $user = $this->findUser($id);
         $isSelf = $this->currentId() === $id;
-        $form = ['name' => $user['name'], 'email' => $user['email'], 'role' => $user['role']];
+        $form = ['name' => $user->getName(), 'email' => $user->getEmail(), 'role' => $user->getRole()];
         $errors = [];
 
         if ($request->isMethod('POST')) {
             $this->checkCsrf($request, 'user_form');
             $form = $this->readUserForm($request);
             if ($isSelf) {
-                $form['role'] = $user['role']; // you cannot change your own role
+                $form['role'] = $user->getRole(); // you cannot change your own role
             }
-            $errors = $this->validateUser($form, $id, self::ROLES);
+            $errors = $this->validateUser($form, $id, User::ROLES);
             if (!$errors) {
-                $this->db->executeStatement(
-                    'UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?',
-                    [$form['name'], $form['email'], $form['role'], $id]
-                );
+                $user->setName($form['name'])->setEmail($form['email'])->setRole($form['role']);
+                $this->em->flush();
                 $this->addFlash('success', 'Account updated.');
 
                 return $this->redirectToRoute('app_admin_users');
@@ -135,7 +122,7 @@ class AdminController extends AbstractController
         }
 
         return $this->render('admin/user_form.html.twig', [
-            'mode' => 'edit', 'form' => $form, 'errors' => $errors, 'user' => $user, 'roles' => self::ROLES, 'is_self' => $isSelf,
+            'mode' => 'edit', 'form' => $form, 'errors' => $errors, 'user' => $user, 'roles' => User::ROLES, 'is_self' => $isSelf,
         ], new Response('', $errors ? 422 : 200));
     }
 
@@ -150,9 +137,9 @@ class AdminController extends AbstractController
 
             return $this->redirectToRoute('app_admin_user_edit', ['id' => $id]);
         }
-        $hash = $this->hasher->hashPassword(new AppUser($id, $user['name'], $user['email'], '', $user['role'], $user['status']), $new);
-        $this->db->executeStatement('UPDATE users SET password_hash = ? WHERE id = ?', [$hash, $id]);
-        $this->addFlash('success', "Password reset for {$user['name']}. They must log in again.");
+        $user->setPassword($this->hasher->hashPassword($user, $new));
+        $this->em->flush();
+        $this->addFlash('success', "Password reset for {$user->getName()}. They must log in again.");
 
         return $this->redirectToRoute('app_admin_users');
     }
@@ -168,9 +155,9 @@ class AdminController extends AbstractController
 
             return $this->redirectToRoute('app_admin_users');
         }
-        $new = $user['status'] === 'active' ? 'disabled' : 'active';
-        $this->db->executeStatement('UPDATE users SET status = ? WHERE id = ?', [$new, $id]);
-        $this->addFlash('success', "{$user['name']} is now $new.");
+        $user->setStatus($user->isActive() ? 'disabled' : 'active');
+        $this->em->flush();
+        $this->addFlash('success', "{$user->getName()} is now {$user->getStatus()}.");
 
         return $this->redirectToRoute('app_admin_users');
     }
@@ -187,16 +174,18 @@ class AdminController extends AbstractController
         }
         if ($request->isMethod('POST')) {
             $this->checkCsrf($request, 'user_action');
-            $this->db->executeStatement('DELETE FROM users WHERE id = ?', [$id]);
-            $this->addFlash('success', "Account {$user['email']} deleted.");
+            $email = $user->getEmail();
+            $this->em->remove($user); // the database cascades their bookings and detaches their records
+            $this->em->flush();
+            $this->addFlash('success', "Account $email deleted.");
 
             return $this->redirectToRoute('app_admin_users');
         }
 
         return $this->render('admin/user_delete.html.twig', [
             'user' => $user,
-            'bookings' => (int) $this->db->fetchOne('SELECT COUNT(*) FROM bookings WHERE user_id = ?', [$id]),
-            'records' => (int) $this->db->fetchOne('SELECT COUNT(*) FROM listings WHERE created_by = ?', [$id]),
+            'bookings' => $this->bookings->count(['user' => $user]),
+            'records' => $this->listings->count(['createdBy' => $user]),
         ]);
     }
 
@@ -205,16 +194,16 @@ class AdminController extends AbstractController
     #[Route('/admin/bookings', name: 'app_admin_bookings')]
     public function bookings(): Response
     {
-        return $this->render('admin/bookings.html.twig', ['bookings' => $this->db->fetchAllAssociative(
-            'SELECT b.*, l.title FROM bookings b JOIN listings l ON l.id = b.listing_id ORDER BY b.created_at DESC, b.id DESC'
-        )]);
+        return $this->render('admin/bookings.html.twig', ['bookings' => $this->bookings->findAllWithListing()]);
     }
 
     #[Route('/admin/bookings/{id}/cancel', name: 'app_admin_booking_cancel', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function cancelBooking(int $id, Request $request): RedirectResponse
     {
         $this->checkCsrf($request, 'booking_action');
-        $this->db->executeStatement("UPDATE bookings SET status='cancelled' WHERE id = ?", [$id]);
+        $booking = $this->bookings->find($id) ?? throw $this->createNotFoundException('Booking not found.');
+        $booking->setStatus('cancelled');
+        $this->em->flush();
         $this->addFlash('success', 'Booking cancelled.');
 
         return $this->redirectToRoute('app_admin_bookings');
@@ -233,17 +222,12 @@ class AdminController extends AbstractController
     {
         $u = $this->getUser();
 
-        return $u instanceof AppUser ? $u->getId() : 0;
+        return $u instanceof User ? (int) $u->getId() : 0;
     }
 
-    private function findUser(int $id): array
+    private function findUser(int $id): User
     {
-        $u = $this->db->fetchAssociative('SELECT id, name, email, role, status, created_at FROM users WHERE id = ?', [$id]);
-        if (!$u) {
-            throw $this->createNotFoundException('User not found.');
-        }
-
-        return $u;
+        return $this->users->find($id) ?? throw $this->createNotFoundException('User not found.');
     }
 
     private function readUserForm(Request $request): array
@@ -264,7 +248,7 @@ class AdminController extends AbstractController
         }
         if (!filter_var($f['email'], FILTER_VALIDATE_EMAIL) || strlen($f['email']) > 120) {
             $errors[] = 'Enter a valid email.';
-        } elseif ($this->db->fetchOne('SELECT id FROM users WHERE email = ? AND id <> ?', [$f['email'], $ignoreId ?? 0])) {
+        } elseif ($this->users->emailTaken($f['email'], $ignoreId)) {
             $errors[] = 'That email is already used by another account.';
         }
         if (!in_array($f['role'], $allowedRoles, true)) {
